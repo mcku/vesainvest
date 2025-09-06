@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vesa Monitoring Service</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-4">Vesa Monitoring Service</h1>
+
+        <div class="mb-4">
+            <button id="connectWallet" type="button" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Connect Wallet
+            </button>
+            <div id="connectedWalletAddress" class="text-lg font-medium text-gray-700 mt-2 text-center"></div>
+        </div>
+
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-bold mb-4">Submit Monitoring Request</h2>
+            <form id="monitoringForm" class="space-y-4">
+                <div>
+                    <label for="request_type" class="block text-sm font-medium text-gray-700">Request Type:</label>
+                    <select name="request_type" id="request_type" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <option value="selfwallet">Self Wallet</option>
+                        <option value="token">Token</option>
+                        <option value="addr">Address</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="address" class="block text-sm font-medium text-gray-700">Address or Subject:</label>
+                    <input type="text" id="address" name="subject" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+                <div>
+                    <input type="submit" value="Submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                </div>
+                <input type="hidden" id="userWalletAddress" name="user_wallet_address">
+            </form>
+        </div>
+
+        <h2 class="text-2xl font-bold mb-4">Monitoring Requests</h2>
+        <div class="bg-white shadow-md rounded">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request Type</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject</th>
+                    </tr>
+                </thead>
+                <tbody id="monitoringRequestsTableBody" class="bg-white divide-y divide-gray-200">
+                    {{range .}}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">{{.User}}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{.Date.Format "2006-01-02 15:04:05"}}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{.RequestType}}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{.Subject}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const connectWalletBtn = document.getElementById('connectWallet');
+            const connectedWalletAddressDiv = document.getElementById('connectedWalletAddress');
+            const userWalletAddressInput = document.getElementById('userWalletAddress');
+            const monitoringForm = document.getElementById('monitoringForm');
+            const requestTypeSelect = document.getElementById('request_type');
+            const addressInput = document.getElementById('address');
+            const tableBody = document.getElementById('monitoringRequestsTableBody');
+
+            let connectedAccount = null;
+
+            // Cüzdan bağlantısını yöneten fonksiyon
+            const connectWallet = async () => {
+                if (window.ethereum) {
+                    try {
+                        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                        handleAccountsChanged(accounts);
+                    } catch (error) {
+                        console.error("User rejected the request:", error);
+                        alert("Cüzdan bağlantı isteği reddedildi.");
+                    }
+                } else {
+                    alert('MetaMask yüklü değil. Lütfen MetaMask eklentisini kurun.');
+                }
+            };
+
+            // Hesap değiştiğinde arayüzü güncelleyen fonksiyon
+            const handleAccountsChanged = (accounts) => {
+                if (accounts.length === 0) {
+                    console.log('Please connect to MetaMask.');
+                    connectedAccount = null;
+                    connectedWalletAddressDiv.textContent = 'Not Connected';
+                    userWalletAddressInput.value = '';
+                    connectWalletBtn.textContent = 'Connect Wallet';
+                } else {
+                    connectedAccount = accounts[0];
+                    connectedWalletAddressDiv.textContent = `Connected: ${connectedAccount.substring(0, 6)}...${connectedAccount.substring(connectedAccount.length - 4)}`;
+                    userWalletAddressInput.value = connectedAccount;
+                    connectWalletBtn.textContent = 'Wallet Connected';
+                    fetchMonitoringRequests(); // Cüzdan bağlanınca talepleri çek
+                    updateAddressField(); // Adres alanını güncelle
+                }
+            };
+
+            // Kullanıcının izleme taleplerini API'den çeken fonksiyon
+            const fetchMonitoringRequests = async () => {
+                if (!connectedAccount) {
+                    tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4">Please connect your wallet to see your requests.</td></tr>';
+                    return;
+                }
+                try {
+                    const response = await fetch(`/api/monitoring-requests?user=${connectedAccount}`);
+                    const requests = await response.json();
+                    tableBody.innerHTML = ''; // Tabloyu temizle
+                    if (requests && requests.length > 0) {
+                        requests.forEach(req => {
+                            const newRow = tableBody.insertRow();
+                            newRow.innerHTML = `
+                                <td class="px-6 py-4 whitespace-nowrap">${req.User.substring(0, 6)}...${req.User.substring(req.User.length - 4)}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">${new Date(req.Date).toLocaleString()}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">${req.RequestType}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">${req.Subject}</td>
+                            `;
+                        });
+                    } else {
+                        tableBody.innerHTML = '<tr><td colspan="4" class="text-center py-4">No monitoring requests found.</td></tr>';
+                    }
+                } catch (error) {
+                    console.error('Error fetching monitoring requests:', error);
+                }
+            };
+
+            // Sayfa yüklendiğinde mevcut bağlantıyı kontrol et
+            const checkConnection = async () => {
+                if (window.ethereum) {
+                    try {
+                        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                        handleAccountsChanged(accounts);
+                    } catch (err) {
+                        console.error("Could not fetch accounts:", err);
+                    }
+                }
+            };
+
+            // "Request Type" değişimine göre adres alanını güncelle
+            const updateAddressField = () => {
+                if (requestTypeSelect.value === 'selfwallet') {
+                    if (connectedAccount) {
+                        addressInput.value = connectedAccount;
+                        addressInput.readOnly = true;
+                        addressInput.classList.add('bg-gray-200');
+                    } else {
+                        addressInput.value = "Please connect your wallet first.";
+                        addressInput.readOnly = true;
+                    }
+                } else {
+                    addressInput.value = '';
+                    addressInput.readOnly = false;
+                    addressInput.classList.remove('bg-gray-200');
+                }
+            };
+
+            // Form gönderimini yönet
+            monitoringForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                if (!connectedAccount) {
+                    alert('Please connect your wallet before submitting a request.');
+                    return;
+                }
+
+                const formData = new FormData(monitoringForm);
+                // Backend'in beklediği JSON yapısını oluştur
+                const data = {
+                    User: connectedAccount,
+                    RequestType: formData.get('request_type'),
+                    Subject: formData.get('subject')
+                };
+
+                try {
+                    const response = await fetch('/api/monitoring-requests', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data),
+                    });
+
+                    if (response.status === 201) { // Created
+                        const newRequest = await response.json();
+                        // Tabloya yeni satır ekle
+                        const newRow = tableBody.insertRow(0); // Başa ekle
+                        newRow.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap">${newRequest.User.substring(0, 6)}...${newRequest.User.substring(newRequest.User.length - 4)}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${new Date(newRequest.Date).toLocaleString()}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${newRequest.RequestType}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">${newRequest.Subject}</td>
+                        `;
+                        monitoringForm.reset();
+                        updateAddressField();
+                    } else {
+                        alert('An error occurred while submitting the request.');
+                    }
+                } catch (error) {
+                    console.error('Error submitting form:', error);
+                }
+            });
+
+            // Event listener'ları ata
+            connectWalletBtn.addEventListener('click', connectWallet);
+            requestTypeSelect.addEventListener('change', updateAddressField);
+            window.ethereum?.on('accountsChanged', handleAccountsChanged);
+
+            // Başlangıç kontrolleri
+            checkConnection();
+            fetchMonitoringRequests(); // Sayfa ilk yüklendiğinde de kontrol et
+            updateAddressField();
+        });
+    </script>
+</body>
+</html>
