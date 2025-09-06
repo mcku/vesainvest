@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Blacklist Management</title>
+</head>
+<body>
+    <h1>Blacklist Management</h1>
+
+    <h2>Add to Blacklist</h2>
+    <form action="/blacklist/add" method="post">
+        <label for="subject_type">Subject Type:</label>
+        <input type="text" id="subject_type" name="subject_type">
+        <br><br>
+        <label for="subject">Subject:</label>
+        <input type="text" id="subject" name="subject">
+        <br><br>
+        <label for="reason">Reason:</label>
+        <input type="text" id="reason" name="reason">
+        <br><br>
+        <input type="submit" value="Add">
+    </form>
+
+    <h2>Blacklist</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Subject Type</th>
+                <th>Subject</th>
+                <th>Reason</th>
+                <th>Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .}}
+            <tr>
+                <td>{{.SubjectType}}</td>
+                <td>{{.Subject}}</td>
+                <td>{{.Reason}}</td>
+                <td>{{.Date}}</td>
+                <td>{{.Status}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+</body>
+</html>
