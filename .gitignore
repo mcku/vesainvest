@@ -38,3 +38,5 @@ onboarding/onboarding
 monitoring/monitoring
 vesainvest
 vesa-webapp
+venv
+__pycache__
