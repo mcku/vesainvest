@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { CoinDef } from "./coin-cylinder-page"
 
 // Mock data for the coin
 const coinData = {
@@ -22,7 +23,7 @@ const activeOrders = [
   { type: "Sell", price: "$0.0240", amount: "500 RISE" },
 ]
 
-export default function SingleCoinPage() {
+export default function SingleCoinPage(coin: CoinDef) {
   const [activeTab, setActiveTab] = useState<"leverage" | "stock">("leverage")
   const [selectedLeverage, setSelectedLeverage] = useState("10x")
 

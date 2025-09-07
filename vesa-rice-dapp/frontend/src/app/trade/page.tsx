@@ -19,11 +19,27 @@ import type { PriceData } from '@/components/leverage/dataviz/PriceChart';
 import { TokenBTC as Bitcoin } from '@web3icons/react';
 import { contracts } from '@/contracts/contracts';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { X } from 'lucide-react';
+import { Box, X } from 'lucide-react';
 import { getFeedIdFromHash } from '@/lib/feedIdMapping';
 import { createContractHookPayable } from '@/hooks/useContractFactory';
 import { toast } from '@/lib/toast-manager';
-import CoinCylinderPage from '@/components/coin-cylinder-page';
+import CoinCylinderPage, { CoinDef } from '@/components/coin-cylinder-page';
+
+const defaultCoinData: CoinDef = {
+    name: "RISE Chain",
+    symbol: "RISE",
+    logoUrl: "/rise-chain-cryptocurrency-logo.jpg",
+
+    price: "$0.0234",
+    dailyReturn: "+12.45%",
+
+    // 
+    isPositive: false,
+    
+    // AI engine
+    signalTimestamp: "2024-01-15 14:30:22 UTC",
+    aiSignal: "BUY",
+}
 
 interface TradeEvent {
   id: string;
@@ -52,29 +68,29 @@ export default function LeverageTradingPage() {
   const { balance, requestTokens } = useMockUSDC();
   const { contractEvents, subscribeToContract } = useWebSocket();
   const usdcContract = useUSDCContract();
-  
+
   // Form state
   const [amount, setAmount] = useState('0');
   const [balancePercentage, setBalancePercentage] = useState(10); // Default 10% of balance
   const [leverage, setLeverage] = useState(5); // Display value (e.g., 5 for 5x)
-  const [asset, setAsset] = useState<'BTC'>('BTC');
+  const [asset, setAsset] = useState<CoinDef>(defaultCoinData);
   const [closingPositions, setClosingPositions] = useState<Set<string>>(new Set());
   const [allowance, setAllowance] = useState<bigint>(0n);
   const [isApproving, setIsApproving] = useState(false);
-  
+
   // Get max leverage for selected asset
   const maxLeverageForAsset = 100; // BTC max leverage
-  
+
   // Oracle price state
   const [btcOraclePrice, setBtcOraclePrice] = useState<bigint | null>(null);
   const [ethOraclePrice, setEthOraclePrice] = useState<bigint | null>(null);
   const [btcPriceData, setBtcPriceData] = useState<PriceData[]>([]);
-  
+
   // Check allowance
   useEffect(() => {
     const checkAllowance = async () => {
       if (!address || !publicClient) return;
-      
+
       try {
         const currentAllowance = await publicClient.readContract({
           address: contracts.USDC.address,
@@ -82,24 +98,24 @@ export default function LeverageTradingPage() {
           functionName: 'allowance',
           args: [address, contracts.LeverageTrading.address]
         }) as bigint;
-        
+
         setAllowance(currentAllowance);
         console.log('Current USDC allowance:', formatUnits(currentAllowance, 6));
       } catch (error) {
         console.error('Error checking allowance:', error);
       }
     };
-    
+
     checkAllowance();
     // Check every 5 seconds
     const interval = setInterval(checkAllowance, 5000);
-    
+
     return () => clearInterval(interval);
   }, [address, publicClient]);
-  
+
   // Trade events state
   const [tradeEvents, setTradeEvents] = useState<TradeEvent[]>([]);
-  
+
   const handleClosePosition = async (positionId: bigint) => {
     setClosingPositions(prev => new Set([...prev, positionId.toString()]));
     try {
@@ -112,45 +128,45 @@ export default function LeverageTradingPage() {
       });
     }
   };
-  
+
   // Calculate P&L for a position
   const calculatePnL = (position: { entryPrice: bigint; leverage: bigint; amount: bigint; isLong: boolean }, currentPrice: number | undefined) => {
     if (!currentPrice) return null;
-    
+
     const entryPrice = Number(formatUnits(position.entryPrice, 18));
     const leverageDisplay = Number(position.leverage) / 10000; // Convert from contract format
     const amount = Number(formatUnits(position.amount, 6));
     const positionSize = amount * leverageDisplay;
     const priceDiff = currentPrice - entryPrice;
     // const priceChangePercent = (priceDiff / entryPrice) * 100;
-    const pnl = position.isLong 
+    const pnl = position.isLong
       ? (priceDiff / entryPrice) * positionSize
       : -(priceDiff / entryPrice) * positionSize;
-    
+
     // P&L percentage is based on the initial collateral (amount), not position size
     const pnlPercent = (pnl / amount) * 100;
-    
+
     return { pnl, pnlPercent };
   };
-  
+
   // Process contract events from WebSocket provider (same as events page)
   useEffect(() => {
     // Filter for LeverageTradingV3 events
     const leverageEvents = contractEvents.filter(
       event => event.address?.toLowerCase() === contracts.LeverageTrading.address.toLowerCase()
     );
-    
+
     leverageEvents.forEach(event => {
       if (!event.eventName || !event.args) return;
-      
+
       // Create unique event ID
       const eventId = `${event.eventName}-${event.transactionHash}-${event.logIndex}`;
-      
+
       if (event.eventName === 'PositionOpened' && event.args) {
         setTradeEvents(prev => {
           // Check if already exists
           if (prev.some(e => e.id === eventId)) return prev;
-          
+
           const newEvent = {
             id: eventId,
             type: 'PositionOpened' as const,
@@ -171,7 +187,7 @@ export default function LeverageTradingPage() {
         setTradeEvents(prev => {
           // Check if already exists
           if (prev.some(e => e.id === eventId)) return prev;
-          
+
           const newEvent = {
             id: eventId,
             type: 'PositionClosed' as const,
@@ -189,7 +205,7 @@ export default function LeverageTradingPage() {
         setTradeEvents(prev => {
           // Check if already exists
           if (prev.some(e => e.id === eventId)) return prev;
-          
+
           const newEvent = {
             id: eventId,
             type: 'PositionLiquidated' as const,
@@ -205,13 +221,13 @@ export default function LeverageTradingPage() {
       }
     });
   }, [contractEvents]);
-  
+
   // Subscribe to contracts
   useEffect(() => {
     subscribeToContract(contracts.PriceOracle.address);
     subscribeToContract(contracts.LeverageTrading.address);
   }, [subscribeToContract]);
-  
+
   // Process contract events
   useEffect(() => {
     // Oracle events
@@ -221,18 +237,18 @@ export default function LeverageTradingPage() {
 
     // Process PriceUpdated events
     const priceUpdatedEvents = oracleEvents.filter(event => event.eventName === 'PriceUpdated');
-    
+
     priceUpdatedEvents.forEach(event => {
       if (event.args && 'price' in event.args) {
         const price = event.args!.price as bigint;
         const timestamp = Date.now();
-        
+
         // For indexed string parameters, we need to check the topics
         // The feedId is the second topic (first is event signature)
         if (event.topics && event.topics.length > 1) {
           const feedIdHash = event.topics[1];
           const feedId = getFeedIdFromHash(feedIdHash);
-          
+
           if (feedId === 'BTCUSD') {
             setBtcOraclePrice(price);
             setBtcPriceData(prev => [...prev, { price, timestamp: new Date(timestamp) }].slice(-50));
@@ -243,12 +259,12 @@ export default function LeverageTradingPage() {
       }
     });
   }, [contractEvents]);
-  
+
   const currentOraclePrice = btcOraclePrice;
-  const currentOraclePriceNumber = currentOraclePrice 
+  const currentOraclePriceNumber = currentOraclePrice
     ? Number(formatUnits(currentOraclePrice, 18))
     : undefined;
-    
+
   // Calculate amount based on balance percentage
   useEffect(() => {
     if (balance && typeof balance === 'bigint' && balance > 0n) {
@@ -257,25 +273,25 @@ export default function LeverageTradingPage() {
       setAmount(calculatedAmount);
     }
   }, [balance, balancePercentage]);
-    
+
   // Check if we need approval for current amount
   const amountBigInt = amount ? parseUnits(amount, 6) : 0n;
   const needsApproval = allowance < amountBigInt;
-  
+
   const handleApprove = async () => {
     if (!address) return;
-    
+
     setIsApproving(true);
     try {
       // Approve max uint256 for convenience
       const maxApproval = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
-      
+
       console.log('Approving USDC spend for LeverageTrading contract...');
       const result = await usdcContract.write('approve', [contracts.LeverageTrading.address, maxApproval]);
-      
+
       console.log('Approval result:', result);
       toast.success('USDC approved for trading!');
-      
+
       // Check allowance immediately after approval
       if (publicClient) {
         const newAllowance = await publicClient.readContract({
@@ -284,7 +300,7 @@ export default function LeverageTradingPage() {
           functionName: 'allowance',
           args: [address, contracts.LeverageTrading.address]
         }) as bigint;
-        
+
         setAllowance(newAllowance);
       }
     } catch (error) {
@@ -294,10 +310,10 @@ export default function LeverageTradingPage() {
       setIsApproving(false);
     }
   };
-  
+
   const handleOpenPosition = async (isLong: boolean) => {
     try {
-      await openPosition(amount, leverage, isLong, asset);
+      await openPosition(amount, leverage, isLong, asset.symbol);
       // Position will be added via event listener
     } catch (error) {
       console.error('Error opening position:', error);
@@ -318,65 +334,51 @@ export default function LeverageTradingPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Chart with asset selector */}
+        {/* En sol Left Column - Chart with asset selector */}
         <div className="lg:col-span-1">
-     <CoinCylinderPage /> </div>
+          <CoinCylinderPage setAsset={setAsset}/> 
+         </div>
+        {/* Mid left */}
         <div className="lg:col-span-1">
           <Card className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <Select value={asset} onValueChange={(v) => setAsset(v as 'BTC')}>
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="BTC">
-                      <div className="flex items-center gap-2">
-                        <Bitcoin size={16} />
-                        <span>BTC/USD</span>
-                      </div>
-                    </SelectItem>
-                    {/* Add more assets here as needed:
-                    <SelectItem value="ETH">
-                      <div className="flex items-center gap-2">
-                        <Ethereum size={16} />
-                        <span>ETH/USD</span>
-                      </div>
-                    </SelectItem>
-                    */}
-                  </SelectContent>
-                </Select>
-                <div className="text-2xl font-bold">
-                  {currentOraclePriceNumber ? `$${currentOraclePriceNumber.toFixed(2)}` : 'Loading...'}
+            {/* Coin Identity Block */}
+            <div className="flex items-start gap-4">
+              <img
+                src={asset.logoUrl || "/placeholder.svg"}
+                alt={`${asset.name} logo`}
+                className="w-12 h-12 rounded-full"
+              />
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h1 className="text-2xl font-bold text-white">{asset.name}</h1>
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
                 </div>
-                {currentOraclePrice && (
-                  <Badge variant="outline" className="text-xs">Live</Badge>
-                )}
+                <div className="flex items-center gap-4">
+                  <span className="text-xl font-semibold text-white">{asset.price}</span>
+                  <span className={`text-base font-medium ${asset.isPositive ? "text-green-500" : "text-red-500"}`}>
+                    {asset.dailyReturn}
+                  </span>
+                </div>
               </div>
             </div>
-            
-            {btcPriceData.length > 0 ? (
-              <PriceChart
-                data={btcPriceData}
-                decimals={18}
-                height={400}
-                chartType="line"
-                showGrid={true}
-                currentPrice={btcOraclePrice || undefined}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-[400px] text-gray-500">
-                Waiting for BTC price data...
-              </div>
-            )}
           </Card>
+          <br />
+          {/* AI Signal Card */}
+          <Card className="bg-black border border-gray-800 p-4">
+            <h2 className="text-xs font-semibold text-gray-400 mb-3 tracking-wider">AI SIGNAL</h2>
+            <div className="text-xl font-bold text-green-500 mb-2">{asset.aiSignal}
+            &nbsp;{asset.aiSignal == "BUY"? "🟢": asset.aiSignal == "SELL"? "🔴": ""}
+             &nbsp;{asset.signalTimestamp} </div>
+          </Card>
+
+          
         </div>
-        
+
         {/* Right Column - Trading Panel */}
         <div className="space-y-6">
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Trade {asset}/USD</h3>
-            
+            <h3 className="text-lg font-semibold mb-4">Trade {asset.symbol}/USD</h3>
+
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between items-center mb-2">
@@ -406,7 +408,7 @@ export default function LeverageTradingPage() {
                     </Button>
                   )}
                 </div>
-                
+
                 {/* Manual input option */}
                 <div className="mt-3">
                   <Input
@@ -429,7 +431,7 @@ export default function LeverageTradingPage() {
                   />
                 </div>
               </div>
-              
+
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <Label>Leverage</Label>
@@ -442,7 +444,7 @@ export default function LeverageTradingPage() {
                   marks={[1, 5, 10, 25, 50, 100]}
                 />
               </div>
-              
+
               {/* Show approval button if needed */}
               {needsApproval && amountBigInt > 0n && (
                 <div className="p-4 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
@@ -460,7 +462,7 @@ export default function LeverageTradingPage() {
                   </Button>
                 </div>
               )}
-              
+
               <div className="grid grid-cols-2 gap-3 mt-6">
                 <Button
                   onClick={() => handleOpenPosition(false)}
@@ -484,7 +486,7 @@ export default function LeverageTradingPage() {
           </Card>
         </div>
       </div>
-      
+
       {/* Bottom Panels */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {/* Panel 1 - User Positions */}
@@ -495,12 +497,12 @@ export default function LeverageTradingPage() {
               <div className="space-y-3">
                 {userPositions.map((position) => {
                   // Get the correct price based on position's feedId
-                  const positionPrice = position.feedId === 'BTCUSD' 
+                  const positionPrice = position.feedId === 'BTCUSD'
                     ? (btcOraclePrice ? Number(formatUnits(btcOraclePrice, 18)) : undefined)
                     : (ethOraclePrice ? Number(formatUnits(ethOraclePrice, 18)) : undefined);
                   const pnlData = calculatePnL(position, positionPrice);
                   const leverageDisplay = Number(position.leverage) / 10000;
-                  
+
                   return (
                     <Card key={position.id.toString()} className="p-4">
                       <div className="flex items-start justify-between">
@@ -544,7 +546,7 @@ export default function LeverageTradingPage() {
             )}
           </ScrollArea>
         </Card>
-        
+
         {/* Panel 2 - Live Trade Activity */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
@@ -560,16 +562,15 @@ export default function LeverageTradingPage() {
                   <div key={event.id} className="text-sm border-b pb-2 last:border-0">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Badge 
-                          variant="outline" 
-                          className={`text-xs ${
-                            event.type === 'PositionOpened' ? 'border-blue-500 text-blue-500' :
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${event.type === 'PositionOpened' ? 'border-blue-500 text-blue-500' :
                             event.type === 'PositionClosed' ? 'border-gray-500 text-gray-500' :
-                            'border-red-500 text-red-500'
-                          }`}
+                              'border-red-500 text-red-500'
+                            }`}
                         >
                           {event.type === 'PositionOpened' ? 'OPENED' :
-                           event.type === 'PositionClosed' ? 'CLOSED' : 'LIQUIDATED'}
+                            event.type === 'PositionClosed' ? 'CLOSED' : 'LIQUIDATED'}
                         </Badge>
                         <span className="text-xs text-gray-500">
                           {event.timestamp.toLocaleTimeString()}
@@ -579,16 +580,16 @@ export default function LeverageTradingPage() {
                     <div className="mt-1 text-xs text-gray-600">
                       {event.type === 'PositionOpened' && (
                         <>
-                          {event.data.trader?.slice(0, 6)}...{event.data.trader?.slice(-4)} | 
-                          {event.data.isLong ? 'Long' : 'Short'} {event.data.feedId} | 
-                          Size: ${Number(formatUnits(event.data.amount || 0n, 6)).toFixed(2)} | 
+                          {event.data.trader?.slice(0, 6)}...{event.data.trader?.slice(-4)} |
+                          {event.data.isLong ? 'Long' : 'Short'} {event.data.feedId} |
+                          Size: ${Number(formatUnits(event.data.amount || 0n, 6)).toFixed(2)} |
                           Leverage: {Number(event.data.leverage || 0n) / 10000}x
                         </>
                       )}
                       {event.type === 'PositionClosed' && (
                         <>
-                          {event.data.trader?.slice(0, 6)}...{event.data.trader?.slice(-4)} | 
-                          Position #{event.data.positionId?.toString()} | 
+                          {event.data.trader?.slice(0, 6)}...{event.data.trader?.slice(-4)} |
+                          Position #{event.data.positionId?.toString()} |
                           P&L: ${Number(formatUnits(event.data.pnl || 0n, 6)).toFixed(2)}
                         </>
                       )}

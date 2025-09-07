@@ -261,7 +261,7 @@ export function useLeverageTrading() {
     amount: string,
     leverage: number,
     isLong: boolean,
-    asset: 'BTC' | 'ETH'
+    asset: string,
   ) => {
     if (!address) {
       toast.error('Please connect your wallet to continue');

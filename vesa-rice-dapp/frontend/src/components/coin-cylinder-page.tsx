@@ -1,23 +1,33 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Dispatch, SetStateAction } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 import SearchInput from "./SearchInput"
 
-const mockCoins = [
-  { logoUrl: "/logos/rise.png", name: "RISE Chain", symbol: "RISE", price: "1.25" },
-  { logoUrl: "/logos/bitcoin.png", name: "Bitcoin", symbol: "BTC", price: "68,123.45" },
-  { logoUrl: "/logos/ethereum.png", name: "Ethereum", symbol: "ETH", price: "3,789.10" },
-  { logoUrl: "/logos/solana.png", name: "Solana", symbol: "SOL", price: "165.70" },
-  { logoUrl: "/logos/chainlink.png", name: "Chainlink", symbol: "LINK", price: "17.55" },
-  { logoUrl: "/logos/cardano.png", name: "Cardano", symbol: "ADA", price: "0.45" },
+export interface CoinDef { 
+  logoUrl: string
+  name: string 
+  symbol: string
+  price: string
+  dailyReturn?: string
+  isPositive?: boolean
+  signalTimestamp?: string
+  aiSignal?: string
+}
+
+const mockCoins: CoinDef[] = [
+  { logoUrl: "/logos/rise.png", name: "RISE Chain", symbol: "RISE", price: "1.25", aiSignal:"BUY", signalTimestamp: "2024-01-15 14:30:22 UTC" },
+  { logoUrl: "/logos/bitcoin.png", name: "Bitcoin", symbol: "BTC", price: "68,123.45", aiSignal:"BUY", signalTimestamp: "2024-01-15 14:30:22 UTC" },
+  { logoUrl: "/logos/ethereum.png", name: "Ethereum", symbol: "ETH", price: "3,789.10", aiSignal:"BUY", signalTimestamp: "2024-01-15 14:30:22 UTC" },
+  { logoUrl: "/logos/solana.png", name: "Solana", symbol: "SOL", price: "165.70", aiSignal:"SELL", signalTimestamp: "2024-01-15 14:30:22 UTC" },
+  { logoUrl: "/logos/chainlink.png", name: "Chainlink", symbol: "LINK", price: "17.55", aiSignal:"SELL", signalTimestamp: "2024-01-15 14:30:22 UTC" },
+  { logoUrl: "/logos/cardano.png", name: "Cardano", symbol: "ADA", price: "0.45", aiSignal:"BUY", signalTimestamp: "2024-01-15 14:30:22 UTC" },
 ]
 
-export default function CoinCylinderPage() {
+export default function CoinCylinderPage(props: {setAsset: Dispatch<SetStateAction<CoinDef>>}) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isScrolling, setIsScrolling] = useState(false)
-  const router = useRouter()
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -62,8 +72,11 @@ export default function CoinCylinderPage() {
     }
   }
 
-  const handleCoinClick = (coin: (typeof mockCoins)[0]) => {
-    router.push(`/coin?symbol=${coin.symbol}&name=${encodeURIComponent(coin.name)}&price=${coin.price}`)
+  const handleCoinClick = (coin: CoinDef) => {
+    const { setAsset } = props
+    setAsset(coin)
+
+    // router.push(`/coin?symbol=${coin.symbol}&name=${encodeURIComponent(coin.name)}&price=${coin.price}`)
   }
 
   return (
