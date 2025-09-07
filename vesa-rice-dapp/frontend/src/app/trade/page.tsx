@@ -23,6 +23,7 @@ import { X } from 'lucide-react';
 import { getFeedIdFromHash } from '@/lib/feedIdMapping';
 import { createContractHookPayable } from '@/hooks/useContractFactory';
 import { toast } from '@/lib/toast-manager';
+import CoinCylinderPage from '@/components/coin-cylinder-page';
 
 interface TradeEvent {
   id: string;
@@ -316,11 +317,11 @@ export default function LeverageTradingPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Shreds go brrrr.......</h1>
-      
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Chart with asset selector */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-1">
+     <CoinCylinderPage /> </div>
+        <div className="lg:col-span-1">
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-4">
