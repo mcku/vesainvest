@@ -58,6 +58,12 @@ interface TradeEvent {
   timestamp: Date;
 }
 
+interface AiSignal { 
+  SIGNAL: string 
+  SYMBOL: string 
+  TIMESTAMP: string 
+}
+
 // Create USDC contract hook
 const useUSDCContract = createContractHookPayable('USDC');
 
@@ -85,6 +91,19 @@ export default function LeverageTradingPage() {
   const [btcOraclePrice, setBtcOraclePrice] = useState<bigint | null>(null);
   const [ethOraclePrice, setEthOraclePrice] = useState<bigint | null>(null);
   const [btcPriceData, setBtcPriceData] = useState<PriceData[]>([]);
+
+  const [aiSignalData, setAiSignalData] = useState<AiSignal[]>([])
+
+  async function handleRefreshSignals() {
+    try {
+      const resp = await fetch("http://localhost:5000/signals");
+      const data = await resp.json();
+      setAiSignalData(data);
+      window.alert("Computed signals for " + data.length + " symbols")
+    } catch (e) {
+      console.error("could not fetch signals", e)
+    }
+  }
 
   // Check allowance
   useEffect(() => {
@@ -369,6 +388,7 @@ export default function LeverageTradingPage() {
             <div className="text-xl font-bold text-green-500 mb-2">{asset.aiSignal}
             &nbsp;{asset.aiSignal == "BUY"? "🟢": asset.aiSignal == "SELL"? "🔴": ""}
              &nbsp;{asset.signalTimestamp} </div>
+             <Button onClick={() => handleRefreshSignals()}>Refresh</Button>
           </Card>
 
           
