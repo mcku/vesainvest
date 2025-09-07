@@ -3,6 +3,7 @@ import React from 'react';
 import Header from './Header';
 import { ArrowRightIcon, CortexIcon, QuantIcon, AelfIcon, MeetonIcon } from './icons';
 import InteractiveHeadline from './InteractiveHeadline';
+import { useRouter } from 'next/router';
 
 const DataNode = ({ icon, title, value, className }: { icon: React.ReactNode, title: string, value: string, className: string }) => (
   <div className={`absolute flex items-center gap-3 ${className}`}>
@@ -36,6 +37,7 @@ const RoadmapItem = ({ quarter, title, isLast = false }: { quarter: string, titl
 
 
 const App: React.FC = () => {
+  const router = useRouter();
   return (
     <div className="relative min-h-screen w-full overflow-x-hidden bg-[#0A0A0A] text-white p-4 md:p-8 flex items-center justify-center">
       {/* Main container with rounded corners */}
@@ -97,7 +99,8 @@ const App: React.FC = () => {
                   }
                   const accounts = await eth.request({ method: 'eth_requestAccounts' });
                   // rise app'i ac
-                  location.replace("http://localhost:3000")
+
+                  router.push("/trade")
                 }}
                 >
                   Open App <ArrowRightIcon className="stroke-black"/>
