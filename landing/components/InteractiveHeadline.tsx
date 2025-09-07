@@ -34,7 +34,7 @@ const InteractiveHeadline: React.FC = () => {
         className="text-5xl md:text-7xl font-black tracking-tighter flex items-center justify-center cursor-pointer"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        aria-label="VESA INVESTMENT, hover to reveal Verified Safe"
+        aria-label="VESA INVESTMENTS"
       >
         <span className="bg-clip-text text-transparent bg-gradient-to-b from-white to-gray-400">VE</span>
         
@@ -71,7 +71,7 @@ const InteractiveHeadline: React.FC = () => {
         </AnimatePresence>
       </h1>
       <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white/40" aria-hidden="true">
-        INVESTMENT
+        INVESTMENTS
       </h1>
     </div>
   );
