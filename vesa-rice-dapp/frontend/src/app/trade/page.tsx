@@ -98,8 +98,8 @@ export default function LeverageTradingPage() {
     try {
       const resp = await fetch("http://localhost:5000/signals");
       const data = await resp.json();
-      setAiSignalData(data);
       window.alert("Computed signals for " + data.length + " symbols")
+      setAiSignalData(data);
     } catch (e) {
       console.error("could not fetch signals", e)
     }
