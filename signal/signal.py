@@ -176,7 +176,7 @@ def run_main():
             elif last_sig == -1:
                 sig_txt = "Sell"
             else:
-                sig_txt = np.nan
+                sig_txt = ""
 
             ts_iso = pd.to_datetime(last_ts, utc=True).isoformat().replace("+00:00", "Z")
             rows.append({"SYMBOL": sym.split("/")[0], "SIGNAL": sig_txt, "TIMESTAMP": ts_iso})
